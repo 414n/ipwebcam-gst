@@ -193,6 +193,9 @@ DISABLE_ECHO_CANCEL=0
 # Use exclusive caps by default (required by Chrome, Cheese and others)
 V4L2_OPTS="exclusive_caps=1"
 
+# Commands
+SS_CMD="$(command -v ss || command -v /usr/sbin/ss)"
+MODPROBE_CMD="$(command -v modprobe || command -v /usr/sbin/modprobe || command -v /sbin/modprobe)"
 
 OPTS=`getopt -o ab:Cd:f:h:l:i:p:stvw:x --long audio,adb-path:,device:,flip:,height:,help,adb-flags:,use-wifi:,port:,no-sync,with-tee,video,width:,no-proxy,no-echo-cancel -n "$0" -- "$@"`
 eval set -- "$OPTS"
@@ -282,7 +285,7 @@ if lsmod | grep -w v4l2loopback >/dev/null 2>/dev/null; then
 elif [ $CAPTURE_STREAM = v -o $CAPTURE_STREAM = av ]; then
     if can_run sudo; then
         echo Loading module
-        sudo modprobe v4l2loopback $V4L2_OPTS #-q > /dev/null 2>&1
+        sudo "$MODPROBE_CMD" v4l2loopback $V4L2_OPTS #-q > /dev/null 2>&1
         sleep .05
     else
         echo Load module with \"modprobe v4l2loopback $V4L2_OPTS\"
@@ -326,9 +329,9 @@ if [ -z $IP ]; then
     if ! phone_plugged; then
         error "adb is available, but the phone is not plugged in.\nConnect your phone to USB and allow usb debugging under developer settings or use Wi-Fi (slower)."
     fi
-    if ss -ln src ":$PORT" | grep -q ":$PORT"; then
+    if "$SS_CMD" -ln src ":$PORT" | grep -q ":$PORT"; then
         PIDOF_ADB="$(pidof adb)"
-        if test -n "$PIDOF_ADB" && ss -lptn ":$PORT" | grep "pid=${PIDOF_ADB}"; then
+        if test -n "$PIDOF_ADB" && "$SS_CMD" -lptn ":$PORT" | grep "pid=${PIDOF_ADB}"; then
             if confirm "Your port $PORT seems to be in use by ADB: would you like to clear the previous port before continuing?"; then
                 adb forward --remove tcp:$PORT
             else
